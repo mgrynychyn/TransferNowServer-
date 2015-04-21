@@ -14,7 +14,7 @@
 @property BOOL isDirectory;
 @property BOOL isDownloaded;
 @property BOOL isSelected;
-@property long long size;
+@property long size;
 
 - initWithName:(NSString *)name;
 @end

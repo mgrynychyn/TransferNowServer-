@@ -7,11 +7,12 @@
 //
 
 #import <UIKit/UIKit.h>
+#import "MGNetwork.h"
 
 @interface MasterViewController : UITableViewController
 
--(void) startBrowser;
--(void) stopBrowser;
-
+@property MGNetwork *network;
+//- (void)configureStartCell;
+-(void)didRemoveService;
 @end
 

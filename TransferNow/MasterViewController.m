@@ -7,32 +7,38 @@
 //
 
 #import "MasterViewController.h"
-
+#import "TableHeaderView.h"
 #import "LocalFilesViewController.h"
 #import "MyFile.h"
+#import "MGNetwork.h"
+#import "Conversion.h"
+#import "FileTableViewCell.h"
 
 #define START_SECTION 0
-static NSString * bonjourType = @"_bft._tcp.";
-static NSString * serviceLabel =@"Start DocumentServer on your computer";
-static NSString * serviceLabel2 =@"and turn WIFI on";
-static NSString * aboutDirectory = @"tap to view Documents directory";
+
+//static NSString * aboutDirectory = @"tap to view Documents directory";
 static NSString * downloaded = @"downloaded";
 
-@interface MasterViewController ()<NSStreamDelegate, NSNetServiceBrowserDelegate>
+static NSString * initial = @"Disconnected";
+
+@interface MasterViewController ()<NSStreamDelegate, MGNetworkDelegate, TableHeaderViewDelegate>
 @property NSMutableArray *objects;
 @property NSString *currentDirectory;
+@property (strong, nonatomic) UILabel *downloadLabel;
 @property (strong, nonatomic) UILabel *monitorLabel;
-@property (strong, nonatomic) UILabel *monitorSubLabel;
 
+@property (strong, nonatomic) UIButton *button;
+@property (strong, nonatomic) UILabel *monitorSubLabel;
+@property (nonatomic, assign, readwrite) NSUInteger streamOpenCount;
 @property (strong, nonatomic) UIActivityIndicatorView *activityIndicator;
-@property (nonatomic, strong, readwrite) NSNetService *netService;
-@property (nonatomic, strong, readwrite) NSNetServiceBrowser *  browser;
+
+@property TableHeaderView *initialView;
+
 @property (strong, nonatomic) UITableViewCell *serviceCell;
-@property (strong, nonatomic) UITableViewCell *fileCell;
-@property (nonatomic, strong, readwrite) NSInputStream *        inputStream;
-@property (nonatomic, strong, readwrite) NSOutputStream *       outputStream;
+
+
 @property (nonatomic, strong, readwrite) NSOutputStream *        fileOutputStream;
-@property (nonatomic, assign, readwrite) NSUInteger             streamOpenCount;
+
 
 @property BOOL isDir;
 @property NSInteger index;
@@ -44,17 +50,33 @@ static NSString * downloaded = @"downloaded";
 - (void)awakeFromNib {
     
     [super awakeFromNib];
-    
    
 }
 
 - (void)viewDidLoad {
     
     [super viewDidLoad];
-     [self startBrowser];
-    [self configureStartCell];
-
+    self.network=[MGNetwork network];
+    self.network.delegate=self;
+    self.network.streamDelegate=self;
+//    [self.network startBrowser];
+//    [self configureHeaderView];
+    self.initialView=[[TableHeaderView alloc] initWithFrame:self.tableView.frame];
+   
+    self.initialView.delegate=self;
+    self.tableView.tableHeaderView =self.initialView;
+    self.tableView.backgroundColor=[UIColor lightGrayColor];
+//    [self configureDownloadCell];
+    
+//    self.index=-2;
+//    [self configureStartCell];
     self.objects=[NSMutableArray array];
+    self.title=initial;
+    
+    [FileTableViewCell setDownloadButton];
+    [[FileTableViewCell downloadButton] addTarget:self
+                                         action:@selector(buttonSelected:) forControlEvents:UIControlEventTouchDown];
+   
 }
 
 - (void)didReceiveMemoryWarning {
@@ -63,37 +85,22 @@ static NSString * downloaded = @"downloaded";
     // Dispose of any resources that can be recreated.
 }
 
-- (void)configureStartCell{
+#pragma mark in place of "buttonSelected" - button delegate's methods
+
+-(void) startBrowser{
     
-    UITableViewCell *cell;
-    cell = [self.tableView dequeueReusableCellWithIdentifier:@"Service"];
+    if(self.network!=nil)
+            [self.network startBrowser];
+
+}
+
+
+-(void) stopBrowser{
     
-   
-//    CGRect frame = CGRectMake(20.0, 0.0, 200.0, 40.0);
-    CGRect frame = CGRectMake(20.0, 0.0, 200.0, 25.0);
-    _monitorLabel = [[UILabel alloc] initWithFrame:frame];
-    _monitorLabel.text=serviceLabel;
-    _monitorLabel.adjustsFontSizeToFitWidth=YES;
-   
-//    _monitorLabel.baselineAdjustment=0;
-    
-    frame = CGRectMake(20.0, 26, 150.0, 15.0);
-    _monitorSubLabel = [[UILabel alloc] initWithFrame:frame];
-    _monitorSubLabel.text=serviceLabel2;
-    _monitorSubLabel.adjustsFontSizeToFitWidth=YES;
-    _monitorSubLabel.baselineAdjustment=UIBaselineAdjustmentNone;
-    
-//    CGPoint point=CGPointMake(264.0, 22.0);
-     CGPoint point=CGPointMake(300.0, 22.0);
-    _activityIndicator=[[UIActivityIndicatorView alloc] init];
-    _activityIndicator.activityIndicatorViewStyle= UIActivityIndicatorViewStyleWhite;
-    _activityIndicator.center= point;
-    [cell addSubview:_monitorLabel];
-    [cell addSubview:_monitorSubLabel];
-    [cell addSubview:_activityIndicator];
-    self.serviceCell=cell;
+      [self.network stopBrowser];
     
 }
+
 
 #pragma mark - Table View
 
@@ -103,8 +110,14 @@ static NSString * downloaded = @"downloaded";
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     
-    if(section==START_SECTION)
-        return 1;
+    if(section==START_SECTION){
+        if([self.title isEqual:initial])
+            
+            return 0;
+        else
+            return 1;
+    }
+    
     if(self.objects!=nil)
         return self.objects.count;
     else
@@ -112,7 +125,7 @@ static NSString * downloaded = @"downloaded";
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
-    if(section==START_SECTION)
+   if(section==START_SECTION)
         return nil;
     else
         return self.currentDirectory;
@@ -121,15 +134,14 @@ static NSString * downloaded = @"downloaded";
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     
     UITableViewCell *cell;
-    
+
     
     if (indexPath.section==START_SECTION) {
  
-        cell=self.serviceCell;
-        if([_monitorLabel.text isEqualToString:serviceLabel]){
  
-            [_activityIndicator startAnimating];
-        }
+        cell= [tableView dequeueReusableCellWithIdentifier:@"Directory" forIndexPath:indexPath];
+             cell.textLabel.text = @"Documents";
+
     }
     else {
         
@@ -146,8 +158,37 @@ static NSString * downloaded = @"downloaded";
                 cell.detailTextLabel.text=downloaded;
             }
             
-            else
-                cell= [tableView dequeueReusableCellWithIdentifier:@"File" forIndexPath:indexPath];
+            else{
+                
+                FileTableViewCell *cell=[tableView dequeueReusableCellWithIdentifier:@"File" forIndexPath:indexPath];
+                
+                if([cell viewWithTag:BUTTON_TAG]!=nil && [FileTableViewCell downloadIndexPath]==nil)
+                    [[FileTableViewCell downloadButton] removeFromSuperview];
+                
+                cell.indexPath=indexPath;
+                cell.textLabel.text = object.name;
+                cell.detailTextLabel.text=[Conversion numberToString:object.size];
+                if(([FileTableViewCell downloadIndexPath] !=nil)&& [[FileTableViewCell downloadIndexPath]isEqual:indexPath]){
+                    
+                    [UIView animateWithDuration:0.5 animations:^{[cell animateBack] ; }];
+                    [FileTableViewCell setDownloadIndexPath:nil];
+                    
+                }
+
+                if([FileTableViewCell selectedIndexPath]!=nil && [[FileTableViewCell selectedIndexPath]isEqual:indexPath]){
+                    
+                    [cell addSubview:[FileTableViewCell downloadButton]];
+                    [cell layoutIfNeeded];
+                    
+                    [UIView animateWithDuration:0.5 animations:^{  [cell animate] ;}];
+                    
+                    [FileTableViewCell setDownloadIndexPath:indexPath];
+                    
+                }
+               // cell.detailTextLabel.text=[Conversion numberToString:object.size];
+                return cell;
+            }
+            
             
         }
         cell.textLabel.text = object.name;
@@ -159,141 +200,87 @@ static NSString * downloaded = @"downloaded";
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    [tableView deselectRowAtIndexPath:indexPath animated:YES];
-   
-    if(indexPath.section==START_SECTION){
-        self.isDir=YES;
-        [self send:'A'];
-        self.index=-1;
-        self.currentDirectory=@"Documents/";
-    }
     
-    else{
-        if(!(((MyFile *)self.objects[indexPath.row]).isDownloaded))
-            [self sendRequest:indexPath.row];
+    
+    if(self.network.outputStream.hasSpaceAvailable){
+//        NSLog(@"DidSelectRow  outputStream status %lu",self.network.outputStream.streamStatus);
+        if(indexPath.section==START_SECTION){
+           
+            [self send:'A'];
+        }
+    
+        else{
+            
+            if(((MyFile *)self.objects[indexPath.row]).isDownloaded){
+                [tableView deselectRowAtIndexPath:indexPath animated:YES];
+                return;
+            }
+            if(((MyFile *)self.objects[indexPath.row]).isDirectory)
+                [self send:indexPath.row];
+            else{
+                if([FileTableViewCell selectedIndexPath]==nil){
+                    
+                    [FileTableViewCell setSelectedIndexPath:indexPath];
+                    
+                }
+                else{
+                    
+                    [FileTableViewCell setSelectedIndexPath:nil];
+                    
+                }
+                
+                //[tableView reloadRowsAtIndexPaths:[NSArray arrayWithObject:indexPath] withRowAnimation:NO];
+                [tableView reloadSections:[NSIndexSet indexSetWithIndex:1] withRowAnimation:NO];
+            }
         
+        }
+     //    tableView.allowsSelection=NO;
     }
-    
-}
-//NSNetServices
 
-- (void)startBrowser
-// See comment in header.
-{
-    
-    self.browser = [[NSNetServiceBrowser alloc] init];
-    [self.browser setDelegate:self];
-    [self.browser searchForServicesOfType:bonjourType inDomain:@"local"];
-    
 }
 
 
-- (void)netServiceBrowser:(NSNetServiceBrowser *)browser didRemoveService:(NSNetService *)service moreComing:(BOOL)moreComing
-{
-    assert(browser == self.browser);
-    NSLog(@"Removed service");
-    assert(service != nil);
-    if ((self.netService!=nil) && [service isEqual:self.netService])
-        self.netService=nil;
-    if ( ! moreComing ){
-       [self closeStreams];
+// MGNetworkDelegate
+- (void) didFindService{
     
-        self.monitorLabel.text=serviceLabel;
-        self.monitorSubLabel.text=serviceLabel2;
-        self.objects=nil;
-        self.currentDirectory=@"";
-        [self.tableView reloadData];
+    if(self.network.netService!=nil){
+        
+        self.title=self.network.netService.name;
+/*        [_activityIndicator stopAnimating];
+        [_activityIndicator removeFromSuperview];
+        [_monitorLabel removeFromSuperview];
+        [_button removeFromSuperview];*/
+
+        self.tableView.tableHeaderView =[[UIView alloc] initWithFrame:CGRectZero];
+        [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:0] withRowAnimation:YES];
+//        [self.tableView reloadData];
+ //       self.monitorLabel.text=self.network.netService.name;
+ //       self.monitorSubLabel.text=aboutDirectory;
+ //       [self.activityIndicator stopAnimating];
+ //       [self.tableView reloadData];
+ 
     }
     
 }
 
-- (void) disableConnection{
-    [self closeStreams];
+- (void) didRemoveService{
     
-    self.monitorLabel.text=serviceLabel;
-    self.monitorSubLabel.text=serviceLabel2;
-    self.objects=nil;
+//    self.monitorLabel.text=serviceLabel;
+//    self.monitorSubLabel.text=serviceLabel2;
+    self.title=initial;
+ //   [self configureHeaderView];
+    if(self.initialView!=nil)
+        self.tableView.tableHeaderView=self.initialView;
+//    [self.button setTitle:stopButton forState:UIControlStateNormal];
+   
+//    [self addBrowsingIndicator];
+//    self.tableView.tableHeaderView=self.headerView;
+    [self.objects removeAllObjects];
+//     [self.activityIndicator startAnimating];
     self.currentDirectory=@"";
+    self.streamOpenCount=0;
     [self.tableView reloadData];
     
-    
-}
-- (void)netServiceBrowser:(NSNetServiceBrowser *)browser didFindService:(NSNetService *)service moreComing:(BOOL)moreComing
-{
-    assert(self.netService == nil);
-    assert(service!=nil);
-    // Add the service to our array (unless its our own service).
-    
-    self.netService=service;
-    
-   if ( ! moreComing )
-   {
-    [self connectToService:self.netService];
-    self.monitorLabel.text=service.name;
-    self.monitorSubLabel.text=aboutDirectory;
-    [self.activityIndicator stopAnimating];
-    
-   }
-}
-
-- (void)stopBrowser
-// See comment in header.
-{
-    [self.browser stop];
-    self.browser = nil;    
-
-}
-
-- (void)connectToService:(NSNetService *)service
-{
-    BOOL                success;
-    NSInputStream *     inStream;
-    NSOutputStream *    outStream;
-    
-    assert(service != nil);
-    
-    assert(self.inputStream == nil);
-    assert(self.outputStream == nil);
-    
-    success = [service getInputStream:&inStream outputStream:&outStream];
-    if (  success ) {
-       
-//        NSLog(@"Connect to service success");
-        self.inputStream  = inStream;
-        self.outputStream = outStream;
-        
-        [self openStreams];
-    }
-}
-
-- (void)openStreams
-{
-    assert(self.inputStream != nil);            // streams must exist but aren't open
-    assert(self.outputStream != nil);
-    
-    [self.inputStream  setDelegate:self];
-    [self.inputStream  scheduleInRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
-    [self.inputStream  open];
-    
-    [self.outputStream setDelegate:self];
-    [self.outputStream scheduleInRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
-    [self.outputStream open];
-}
-
-- (void)closeStreams
-{
-    assert( (self.inputStream != nil) == (self.outputStream != nil) );      // should either have both or neither
-    if (self.inputStream != nil) {
-        
-        [self.inputStream removeFromRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
-        [self.inputStream close];
-        self.inputStream = nil;
-        
-        [self.outputStream removeFromRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
-        [self.outputStream close];
-        self.outputStream = nil;
-    }
-    self.streamOpenCount=0;
 }
 
 - (void)closeFileOutputStream
@@ -309,62 +296,74 @@ static NSString * downloaded = @"downloaded";
 #pragma unused(stream)
     
     switch(eventCode) {
-            
         case NSStreamEventOpenCompleted: {
-             self.streamOpenCount += 1;
-            NSLog(@"%lu streams open",(unsigned long)self.streamOpenCount);
-        //    if(self.streamOpenCount==2)
-         //       [self deregister];
-        } break;
+            self.streamOpenCount += 1;
+            assert(self.streamOpenCount <= 2);
             
+            // Once both streams are open we hide the picker and the game is on.
+            
+            if ((self.streamOpenCount == 2) && (self.network.netService!=nil)){
+               
+                    NSLog(@"Streams open completed");
+                [self didFindService];
+               
+               
+            }
+        } break;
+    
+       
         case NSStreamEventHasSpaceAvailable: {
             
-            assert(stream == self.outputStream);
+            assert(stream == self.network.outputStream);
             
             NSLog(@"Has space available");
-            // do nothing
+            
+            if(self.fileOutputStream!=nil && (self.fileOutputStream.streamStatus!=NSStreamStatusOpen)){
+                [self errorOccurred];
+
+            }
         } break;
             
         case NSStreamEventHasBytesAvailable: {
             
             uint8_t     b[4096];
+            uint8_t     d[8192];
             NSInteger   bytesRead;
             
-            assert(stream == self.inputStream);
-            bytesRead = [self.inputStream read:b maxLength:sizeof(b)];
+            assert(stream == self.network.inputStream);
+            if(self.isDir)
+                bytesRead = [self.network.inputStream read:d maxLength:sizeof(d)];
+            else
+                bytesRead = [self.network.inputStream read:b maxLength:sizeof(b)];
             NSLog(@"Bytes read %ld", (long)bytesRead);
             
 
             if(bytesRead>0){
                 if(self.isDir)
                     
-                    [self processData:b size:bytesRead];
+                    [self processData:d size:bytesRead];
                 
                 else{
+                     static NSInteger allWrittenBytes=0;
                      NSInteger bytesWritten=0;
-                    if(self.fileOutputStream.streamStatus!=NSStreamStatusOpen){
-                       
+  /*                  if(self.fileOutputStream.streamStatus!=NSStreamStatusOpen){
                        
                         [self.fileOutputStream open];
-                    }
- /*                   if(b[bytesRead-1] == 4){
-                        if(bytesRead>1)
-                            bytesWritten = [self.fileOutputStream write:b maxLength:(size_t)bytesRead-1];
-                        [self closeFileOutputStream];
-                        [self updateLocalFilesView];
-                        
-                    }
-                    else*/
+                        NSLog(@"File status %lu",self.fileOutputStream.streamStatus);
+                    }*/
+
             
-                        bytesWritten = [self.fileOutputStream write:b maxLength:(size_t)bytesRead];
-                        NSLog(@"Written %zd bytes.", (ssize_t) bytesWritten);
-                    if(self.inputStream.streamStatus != NSStreamStatusReading){
+                    bytesWritten = [self.fileOutputStream write:b maxLength:(size_t)bytesRead];
+                    allWrittenBytes+=bytesWritten;
+                    NSLog(@"Written %zd bytes.", (ssize_t) bytesWritten);
+                    NSLog(@"All Written %zd bytes.", (ssize_t) allWrittenBytes);
+                    if(allWrittenBytes>=((MyFile *)self.objects[self.index]).size){
                         [self closeFileOutputStream];
                         NSLog(@"End of file");
-                        
+                        allWrittenBytes=0;
                         [self updateLocalFilesView];
                     }
-                                    }
+                }
             }
             
         }   break;
@@ -377,21 +376,46 @@ static NSString * downloaded = @"downloaded";
             NSLog(@"Stream closed");
         } break;
         default:
-            assert(NO);
-            // fall through
-       
+            break;
     }
 }
 
 - (void)send:(uint8_t)message
 {
-    NSLog(@"Stream status on \"send\" %lu", (unsigned long)self.outputStream.streamStatus);
-        
-        if(self.streamOpenCount == 2)
-        if ( [self.outputStream hasSpaceAvailable] ) {
+    [FileTableViewCell setSelectedIndexPath:nil];
+    [FileTableViewCell setDownloadIndexPath:nil];
+    
+        if ( [self.network.outputStream hasSpaceAvailable] ) {
+            if(message=='A'){
+                self.isDir=YES;
+                self.index=-1;
+                
+            }
+            else{
+ //               if((((MyFile *)self.objects[message]).isDownloaded))
+ //                   return;
+                self.isDir=((MyFile *)self.objects[message]).isDirectory;
+                self.index=message;
+                if(!self.isDir){
+                    NSURL *fileURL=[[self documentDirectoryURL] URLByAppendingPathComponent:((MyFile *)self.objects[self.index]).name];
+                    
+                    
+                    NSError *error=nil;
+                    NSFileManager *fm=[NSFileManager defaultManager];
+                    if([fm fileExistsAtPath:[fileURL relativePath]]){
+                        //     NSLog(@"File exists");
+                        [fm removeItemAtURL:fileURL error:&error];
+                    }
+                    
+                    self.fileOutputStream = [NSOutputStream outputStreamWithURL:fileURL append:YES];
+                    [self.fileOutputStream open];
+                }
+
+            }
+            
             NSInteger   bytesWritten;
         
-            bytesWritten = [self.outputStream write:&message maxLength:sizeof(message)];
+            bytesWritten = [self.network.outputStream write:&message maxLength:sizeof(message)];
             NSLog(@"Sent %u", message);
         }
     
@@ -400,14 +424,23 @@ static NSString * downloaded = @"downloaded";
 - (void) processData:( const  char* )data size:(NSInteger)bytesRead
 {
 //    NSString *dirString=@"";
-    if(self.index>-1)
-         self.currentDirectory=[[self.currentDirectory stringByAppendingString:((MyFile *)self.objects[self.index]).name] stringByAppendingString:@"/"];
+    NSIndexPath *indexPath;
+    if(self.index>-1){
+        self.currentDirectory=[[self.currentDirectory stringByAppendingString:((MyFile *)self.objects[self.index]).name] stringByAppendingString:@"/"];
+        indexPath=[NSIndexPath indexPathForRow:self.index inSection:1];
+    }
+    else{
+        self.currentDirectory=@"Documents/";
+        indexPath=[NSIndexPath indexPathForRow:0 inSection:0];
+    }
+    
+    [self.tableView deselectRowAtIndexPath:indexPath animated:YES];
 //  dirString=[dirString initWithUTF8String:data];
     NSString *dirString=[NSString stringWithCharacters:data length:bytesRead];
     
     NSLog(@"dirString  %@", dirString);
 //    dirString=[dirString initWithBytes:data length:bytesRead encoding:NSUTF8StringEncoding ];
-    NSArray *ar= [[NSArray alloc] initWithArray:[dirString componentsSeparatedByString:@","]];
+    NSArray *ar= [[NSArray alloc] initWithArray:[dirString componentsSeparatedByString:@":"]];
     if(self.objects)
         [self.objects removeAllObjects];
     else
@@ -418,14 +451,18 @@ static NSString * downloaded = @"downloaded";
         MyFile *mf=[[MyFile alloc] initWithName:ar[i++]];
         if(mf!=nil){
             mf.isDirectory=[(NSString *)ar[i++] boolValue];
-            if(!mf.isDirectory)
+            if(!mf.isDirectory){
+        
                  mf.size=[(NSString *)ar[i++] longLongValue];
+            }
             [self.objects addObject:mf];
         }
     } while (i<ar.count-1);
     
   
     [self.tableView reloadData];
+    self.tableView.allowsSelection=YES;
+    
 }
 
 - (NSURL *)documentDirectoryURL
@@ -435,7 +472,12 @@ static NSString * downloaded = @"downloaded";
     return documentDirectory ;//URLByAppendingPathComponent:@"ShoppingList.property"];
 }
 
-
+-(void) buttonSelected:(UIButton *)sender{
+    
+    if([FileTableViewCell downloadIndexPath]!=nil)
+        [self send:[FileTableViewCell downloadIndexPath].row ];
+}
+/*
 - (void) sendRequest:(NSUInteger)index {
     
 //    [self setDirectoryViewController:controller];
@@ -457,15 +499,26 @@ static NSString * downloaded = @"downloaded";
     }
     [self send:index];
 }
-
+*/
 -(void) updateLocalFilesView{
+   
     UITabBarController *tabBarController=[self tabBarController];
     LocalFilesViewController *localFilesViewController= [[(UINavigationController *)[[tabBarController viewControllers] objectAtIndex:1] viewControllers] objectAtIndex:0];
     localFilesViewController.notify=!localFilesViewController.notify;
     ((MyFile * )self.objects[self.index]).isDownloaded=YES;
     NSIndexPath *indexPath=[NSIndexPath indexPathForItem:self.index inSection:1];
+    [self.tableView deselectRowAtIndexPath:indexPath animated:YES];
     [self.tableView reloadRowsAtIndexPaths:[NSArray arrayWithObject:indexPath] withRowAnimation:YES];
+    self.tableView.allowsSelection=YES;
+    
+    
 }
 
-
+-(void) errorOccurred{
+    self.tableView.allowsSelection=YES;
+    [self closeFileOutputStream];
+    NSIndexPath *indexPath=[NSIndexPath indexPathForItem:self.index inSection:1];
+    [self.tableView deselectRowAtIndexPath:indexPath animated:YES];
+    [self.tableView reloadRowsAtIndexPaths:[NSArray arrayWithObject:indexPath] withRowAnimation:YES];
+}
 @end

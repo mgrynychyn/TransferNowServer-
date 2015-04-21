@@ -7,7 +7,9 @@
 //
 
 #import "LocalFilesViewController.h"
-#import <MessageUI/MessageUI.h>
+//#import <MessageUI/MessageUI.h>
+#import "Conversion.h"
+
 
 @interface LocalFilesViewController ()
 @property NSMutableArray *files;
@@ -25,7 +27,7 @@
     /*  UITableViewCell *serviceCellView=(UITableViewCell*)[self.tableView viewWithTag:24];
      [self configureServiceCell:serviceCellView];*/
     
-    [self setTitle:@"Local files"];
+  //  [self setTitle:@"Local files"];
 }
 
 - (void)viewDidLoad {
@@ -57,9 +59,12 @@
     UITableViewCell *cell;
     NSString *urlString=[NSString string];
     cell = [tableView dequeueReusableCellWithIdentifier:@"Locals"];    
-    if(self.files!=nil && self.files.count>=indexPath.row)
+    if(self.files!=nil && self.files.count>=indexPath.row){
+        NSNumber *size;
         cell.textLabel.text =  [urlString stringByAppendingString:[self.files[indexPath.row] lastPathComponent]] ;
-    
+        [self.files[indexPath.row] getResourceValue:&size forKey:@"NSURLFileSizeKey" error:nil];
+        cell.detailTextLabel.text=[Conversion numberToString:[size longValue]];
+    }
     return cell;
 }
 
@@ -68,13 +73,12 @@
     
    [tableView deselectRowAtIndexPath:indexPath animated:YES];
     UIActivityViewController *activityViewController = [[UIActivityViewController alloc] initWithActivityItems:@[self.files[indexPath.row]] applicationActivities:nil];
-   
-    
 
    [self presentViewController:activityViewController animated:YES completion:nil];
 }
 
-- (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath {
+- (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath{
+   
     if (editingStyle == UITableViewCellEditingStyleDelete) {
         NSError *err=nil;
         [[NSFileManager defaultManager] removeItemAtURL:(NSURL *)self.files[indexPath.row] error:&err];
@@ -117,5 +121,9 @@
 
 }
 
+- (void)dealloc
+{
+    [self removeObserver:self forKeyPath:@"notify" context:&self->_notify];
+}
 
 @end
