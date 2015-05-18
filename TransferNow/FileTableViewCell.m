@@ -12,7 +12,7 @@ static NSIndexPath * selectedIndexPath;
 static NSIndexPath * downloadIndexPath;
 
 static UIButton * downloadButton;
-
+//static UIProgressView * downloadProgress;
 @implementation FileTableViewCell
 
 + (NSIndexPath *)selectedIndexPath{
@@ -32,7 +32,6 @@ static UIButton * downloadButton;
 }
 
 
-
 + (void) setDownloadButton{
     
     CGRect frame=CGRectZero;
@@ -50,7 +49,7 @@ static UIButton * downloadButton;
     [button setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     downloadButton=button;
     
-    
+   
 }
 
 + (UIButton *) downloadButton{
@@ -59,10 +58,7 @@ static UIButton * downloadButton;
 }
 
 - (void)awakeFromNib {
-/*
-    UIImage *   downloadImage=[UIImage imageNamed:@"CellImage3.png"];
-    self.accessoryView=[[UIImageView alloc] initWithImage:downloadImage];
-*/
+
 }
 
 - (void)setSelected:(BOOL)selected animated:(BOOL)animated {
@@ -161,5 +157,11 @@ static UIButton * downloadButton;
     
 }
 
-
++ (void) downloading{
+ //   CABasicAnimation* theAnim = [CABasicAnimation animationWithKeyPath:@"color"];
+    [UIView animateWithDuration:5.0 animations:^{
+        downloadButton.alpha = 0.0;
+       
+    }];
+}
 @end

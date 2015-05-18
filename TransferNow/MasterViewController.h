@@ -7,12 +7,14 @@
 //
 
 #import <UIKit/UIKit.h>
-#import "MGNetwork.h"
+#import "FileServer.h"
+
 
 @interface MasterViewController : UITableViewController
 
-@property MGNetwork *network;
+@property FileServer *network;
 //- (void)configureStartCell;
 -(void)didRemoveService;
+- (void)send:(uint8_t)message;
 @end
 

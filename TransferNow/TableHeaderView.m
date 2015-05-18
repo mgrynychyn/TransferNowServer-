@@ -9,7 +9,7 @@
 #import "TableHeaderView.h"
 
 static NSString * serviceLabel =@"Start DocumentServer on your computer and turn WIFI \"on\"";
-static NSString * startButton = @"Start browsing";
+static NSString * startButton = @"Start  browsing";
 static NSString * stopButton = @"Stop browsing";
 static NSString * initial = @"Disconnected";
 
@@ -28,23 +28,23 @@ static NSString * initial = @"Disconnected";
     
     if(self!=nil){
         
-        CGRect anotherFrame=CGRectMake(self.bounds.size.width/5, 0.0, self.bounds.size.width*0.6,  self.bounds.size.height*0.25);
+        CGRect anotherFrame=CGRectMake(self.bounds.size.width/8, 0.0, self.bounds.size.width*0.75,  self.bounds.size.height*0.25);
         
         _monitorLabel = [[UILabel alloc] initWithFrame:anotherFrame];
         _monitorLabel.text=serviceLabel;
         _monitorLabel.numberOfLines=2;
-        _monitorLabel.adjustsFontSizeToFitWidth=YES;
-        
+  //      _monitorLabel.adjustsFontSizeToFitWidth=YES;
+        _monitorLabel.font=[UIFont systemFontOfSize: 20];
         _monitorLabel.baselineAdjustment=UIBaselineAdjustmentNone;
         
-        anotherFrame = CGRectMake(self.bounds.size.width/4, self.bounds.size.height*0.35, self.bounds.size.width*0.5,  self.bounds.size.height*0.1125);
+        anotherFrame = CGRectMake(self.bounds.size.width/8, self.bounds.size.height*0.35, self.bounds.size.width*0.75,  self.bounds.size.height*0.1125);
         
         _button=[UIButton buttonWithType:UIButtonTypeSystem] ;
         [_button setFrame:anotherFrame];
         _button.backgroundColor=[UIColor darkGrayColor];
-        _button.layer.cornerRadius=5.0;
+        _button.layer.cornerRadius=10.0;
         [_button setTitle:startButton forState:UIControlStateNormal];
-        
+        _button.titleLabel.font = [UIFont systemFontOfSize: 24];
         [_button setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
         [_button addTarget:self
                     action:@selector(buttonSelected:)

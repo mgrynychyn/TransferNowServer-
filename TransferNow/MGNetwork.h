@@ -18,12 +18,16 @@
 @property (nonatomic, strong, readwrite) NSNetService *netService;
 
 @property (nonatomic, strong, readwrite) NSNetServiceBrowser *  browser;
+
 //- (id)initWithStreams:(NSInputStream *)inputStream outputStream:(NSOutputStream *)outputStream;
 - (void)openStreams;
 - (void)closeStreams;
 - (void) startBrowser;
 - (void)stopBrowser;
 + (id)network;
+
+- (void) writeToLogFile:(NSString *)message;
+- (void) startOver;
 @end
 
 @protocol MGNetworkDelegate

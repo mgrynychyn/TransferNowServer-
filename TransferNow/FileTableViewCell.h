@@ -13,12 +13,13 @@
 
 + (NSIndexPath *) selectedIndexPath;
 + (void) setSelectedIndexPath :(NSIndexPath *)indexPath;
-
++ (void) downloading;
 + (NSIndexPath *) downloadIndexPath;
 + (void) setDownloadIndexPath :(NSIndexPath *)indexPath;
 
 //+ (void) initializePositions:(MyTableViewCell *)cell;
 + (UIButton *) downloadButton;
+//+ (UIProgressView *) downloadProgress;
 + (void) setDownloadButton;
 
 @property NSIndexPath *indexPath;

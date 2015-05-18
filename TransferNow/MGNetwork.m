@@ -21,6 +21,9 @@ typedef int32_t DNSServiceErrorType;
 
 @implementation MGNetwork{
     NSNetService *unconfirmed;
+    NSMutableArray *messages;
+    BOOL resolved;
+   
 }
 
 
@@ -50,8 +53,9 @@ typedef int32_t DNSServiceErrorType;
 //    if ((self.netService!=nil) && [service isEqual:self.netService]){
 //        self.netService=nil;
         if ( ! moreComing ){
-            [self closeStreams];
+        //    [self closeStreams];
             [self.delegate didRemoveService];
+            [self startOver];
         }
 //    }
 }
@@ -64,79 +68,76 @@ typedef int32_t DNSServiceErrorType;
     // Add the service to our array (unless its our own service).
     self.netService=service;
     
-//    [self.netService setDelegate:self];
-//    [self.netService resolveWithTimeout:5.0];
     NSLog(@"Did find a service");
+    
+    
     if ( ! moreComing )
     {
+        resolved=NO;
+
+ //      [self.netService setDelegate:self];
+ //       [self.netService resolveWithTimeout:5.0];
         [self connectToService:self.netService];
  //       [self.delegate didFindService:self.netService];
     }
 }
 
 
+- (void) timeOver:(NSTimer *)timer{
+    
+    [self writeToLogFile:[NSString stringWithFormat:@"Time over"]];
+    NSLog (@"Time over");
+    
+    if(self.inputStream.streamStatus!=NSStreamStatusOpen && self.outputStream.streamStatus!=NSStreamStatusOpen)
+    {
+        
+        [self startOver];
+    }
+    
+    return;
+    
+   
+}
 //NSNeteServiceDelegate
 - (void)netServiceDidResolveAddress:(NSNetService *)netService
 {
-    static NSUInteger count=0;
-//    if(unconfirmed ==nil && self.netService==nil)
-//        return;
-//    if(self.netService==nil){
-//        self.netService=unconfirmed;
-//        unconfirmed=nil;
-    if(count !=0){
-        count=0;
-        return;
+    if(!resolved){
+        [self connectToService:self.netService];
+        resolved=YES;
+        
     }
-    count++;
-    [self connectToService:self.netService];
-//    [self.delegate didFindService:self.netService];
-//        self.netService=nil;
-//    }
-//    [self connectWithName:netService.hostName port:netService.port];
-     NSLog (@"Did resolve the address %@",netService.hostName);
-    NSLog (@"Did resolve the address %@",((NSData *)netService.addresses[0]).description);
-}
-
-- (void) connectWithName:(NSString *)name port:(NSUInteger) port{
-    NSString *urlString=[NSString stringWithFormat:@"bft://%@:%lu/'A'",name,(unsigned long)port];
-    NSURLRequest *theRequest=[NSURLRequest requestWithURL:[NSURL URLWithString:urlString]
-                                              cachePolicy:NSURLRequestUseProtocolCachePolicy
-                                          timeoutInterval:6.0];
-    NSURLConnection *theConnection=[[NSURLConnection alloc] initWithRequest:theRequest delegate:self];
-    if (!theConnection) {
-        NSLog(@"Connection failed");
-    }
-}
-- (void) connection:(NSURLConnection *)connection didFailWithError:(NSError *)error{
+    [self writeToLogFile:[NSString stringWithFormat:@"Did resolve the address %@",((NSData *)netService.addresses[0]).description]];
+        NSLog (@"Did resolve the address %@",((NSData *)netService.addresses[0]).description);
+    if(netService.addresses!=nil)
+        NSLog(@"Addresses count %lu",(unsigned long)netService.addresses.count);
     
-    
-    // inform the user
-    NSLog(@"Connection failed! Error - %@ %@",
-          [error localizedDescription],
-          [[error userInfo] objectForKey:NSURLErrorFailingURLStringErrorKey]);
-}
-
-- (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response
-{
-    NSLog(@"Connection received response!");
 }
 
 
-- (void)netService:(NSNetService *)netService didNotResolve:(NSDictionary *)errorDict{
+
+- (void) startOver{
     
     if(self.netService!=nil){
         self.netService=nil;
         [self stopBrowser];
-        [self.delegate didRemoveService];
+        //       [self.delegate didRemoveService];
         
         [self startBrowser];
-
+        
     }
+
     
+}
+
+- (void)netService:(NSNetService *)netService didNotResolve:(NSDictionary *)errorDict{
+    
+       [ self writeToLogFile:[NSString stringWithFormat:@"Did not resolve the address %@",errorDict.allKeys]];
     NSLog (@"Did not resolve the address %@",errorDict.allKeys);
     NSLog (@"Did not resolve the address %@",errorDict.allValues);
+    
+    [self startOver];
 }
+
 - (void)stopBrowser
 // See comment in header.
 {
@@ -160,13 +161,17 @@ typedef int32_t DNSServiceErrorType;
     assert(self.outputStream == nil);
     
     success = [service getInputStream:&inStream outputStream:&outStream];
+    
+
     if (  success ) {
+ //       [NSTimer scheduledTimerWithTimeInterval:5.0 target:self selector:@selector(timeOver:) userInfo:nil repeats:NO];
         
         self.inputStream  = inStream;
         self.outputStream = outStream;
        
         [self openStreams];
-//         NSLog(@"Connected with stream status input: %lu output: %lu",self.inputStream.streamStatus,self.outputStream.streamStatus);
+         NSLog(@"Connected with stream status input: %lu output: %lu",(unsigned long)self.inputStream.streamStatus,(unsigned long)self.outputStream.streamStatus);
+        [self writeToLogFile:[NSString stringWithFormat:@"Connected with stream status input: %lu output: %lu",(unsigned long)self.inputStream.streamStatus,(unsigned long)self.outputStream.streamStatus]];
         
     }
 }
@@ -199,6 +204,36 @@ typedef int32_t DNSServiceErrorType;
         self.outputStream = nil;
     }
     
+}
+
+- (void) writeToLogFile:(NSString *)message{
+    
+    NSFileCoordinator *  coordinator=[[NSFileCoordinator alloc] init];
+   
+    NSError *error=nil;
+    NSURL *logFile=[[[[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask] lastObject]  URLByAppendingPathComponent:@"LogFile.property"];
+    
+    [coordinator coordinateReadingItemAtURL:logFile options:0  error:&error byAccessor:^(NSURL *newUrl){
+       NSMutableArray * array=[[NSMutableArray alloc] initWithArray:[NSArray arrayWithContentsOfURL:newUrl]];
+        messages=array;
+    }];
+    
+     NSString * newMessage=[[self formatter] stringFromDate:[NSDate date]];
+    [messages addObject:newMessage];
+    [messages addObject:message];
+    [coordinator coordinateWritingItemAtURL:logFile options:NSFileCoordinatorWritingForMerging error:&error byAccessor:^(NSURL *newURL) {
+        [messages  writeToURL:logFile atomically:NO];
+    }];
+
+}
+
+- (NSDateFormatter *) formatter{
+    
+    NSDateFormatter *formatter=[[NSDateFormatter alloc] init];
+    [formatter setLocale:[NSLocale currentLocale]];
+    
+    [formatter setDateFormat:@"yyyy-MM-dd HH:mm:ss "];
+    return formatter;
 }
 
 @end
