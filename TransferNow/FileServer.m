@@ -80,7 +80,7 @@ static void ListeningSocketCallback(CFSocketRef sock, CFSocketCallBackType type,
     if (port != 0) {
         
 //        [self logWithFormat :@"Server started on port %zu.", (size_t) port];
-        [self writeToLogFile:[NSString stringWithFormat:@"Server started on port %u.", (uint) port]];
+//        [self writeToLogFile:[NSString stringWithFormat:@"Server started on port %u.", (uint) port]];
         NSLog(@"Started server on port %zu.", (size_t) port);
        
         self.registeredPort = port;
@@ -426,6 +426,8 @@ static void ListeningSocketCallback(CFSocketRef sock, CFSocketCallBackType type,
     
     fd = * (const int *) data;
     assert(fd >= 0);
+    
+   
     [obj connectionAcceptedWithSocket:fd];
 }
 
@@ -457,6 +459,13 @@ static void ListeningSocketCallback(CFSocketRef sock, CFSocketCallBackType type,
         // to true so the client streams close the socket when they're done.  OTOH, if the client denies
         // the connection, we leave kCFStreamPropertyShouldCloseNativeSocket as false because our caller
         // is going to close the socket in that case.
+    
+    //In case an error occurred on network and we are connected twice
+    if((self.inputStream!=nil && self.inputStream.streamStatus==NSStreamStatusOpen)||(self.outputStream!=nil &&self.outputStream.streamStatus==NSStreamStatusOpen)){
+            [self closeStreams];
+            [self.delegate didRemoveService];
+    }
+    
         self.inputStream=inputStream;
         self.outputStream=outputStream;
         [self openStreams];
@@ -468,7 +477,7 @@ static void ListeningSocketCallback(CFSocketRef sock, CFSocketCallBackType type,
     //Added
   //      [self deregister];
         NSLog(@"%@",kConnected);
-        [self writeToLogFile:kConnected];
+    //    [self writeToLogFile:kConnected];
     
     return self;
 }
@@ -570,35 +579,5 @@ static void ListeningSocketCallback(CFSocketRef sock, CFSocketCallBackType type,
     
 }
 
-// Next 2 methods For debugging
-- (void) writeToLogFile:(NSString *)message{
-    
-    NSFileCoordinator *  coordinator=[[NSFileCoordinator alloc] init];
-    
-    NSError *error=nil;
-    NSURL *logFile=[[[[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask] lastObject]  URLByAppendingPathComponent:@"LogFile.property"];
-    
-    [coordinator coordinateReadingItemAtURL:logFile options:0  error:&error byAccessor:^(NSURL *newUrl){
-        NSMutableArray * array=[[NSMutableArray alloc] initWithArray:[NSArray arrayWithContentsOfURL:newUrl]];
-        messages=array;
-    }];
-    
-    NSString * newMessage=[[self formatter] stringFromDate:[NSDate date]];
-    [messages addObject:newMessage];
-    [messages addObject:message];
-    [coordinator coordinateWritingItemAtURL:logFile options:NSFileCoordinatorWritingForMerging error:&error byAccessor:^(NSURL *newURL) {
-        [messages  writeToURL:logFile atomically:NO];
-    }];
-    
-}
-
-- (NSDateFormatter *) formatter{
-    
-    NSDateFormatter *formatter=[[NSDateFormatter alloc] init];
-    [formatter setLocale:[NSLocale currentLocale]];
-    
-    [formatter setDateFormat:@"yyyy-MM-dd HH:mm:ss "];
-    return formatter;
-}
 
 @end

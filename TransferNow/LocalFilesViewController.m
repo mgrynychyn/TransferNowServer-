@@ -94,12 +94,7 @@
     NSError *error;
     NSFileManager *fileManager = [NSFileManager defaultManager];
     NSURL *myURL = [[fileManager URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask] lastObject];
-/*    NSArray *keys=[NSArray arrayWithObject:@"NSURLIsDirectoryKey" ];
-    //    return myURL;
-    
-    NSArray* files = [fileManager contentsOfDirectoryAtURL:myURL
-                                includingPropertiesForKeys:keys
-                                                   options:NSDirectoryEnumerationSkipsHiddenFiles   error:&error];*/
+
     NSArray* files = [fileManager contentsOfDirectoryAtURL:myURL
                                 includingPropertiesForKeys:nil
                                                    options:0   error:&error];

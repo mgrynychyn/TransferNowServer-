@@ -10,17 +10,17 @@
 #import "TableHeaderView.h"
 #import "LocalFilesViewController.h"
 #import "MyFile.h"
-//#import "FileServer.h"
+
 #import "Conversion.h"
 #import "FileTableViewCell.h"
 
 #define START_SECTION 0
 
-//static NSString * aboutDirectory = @"tap to view Documents directory";
 static NSString * downloaded = @"downloaded";
 static uint8_t documents=225;
 static uint8_t quit=255;
 static NSString * initial = @"Disconnected";
+static NSString * connected = @"Connected";
 
 @interface MasterViewController ()<FileServerDelegate, TableHeaderViewDelegate>
 @property NSMutableArray *objects;
@@ -43,7 +43,6 @@ static NSString * initial = @"Disconnected";
 
 @property BOOL isDir;
 @property NSInteger index;
-
 @end
 
 @implementation MasterViewController
@@ -143,7 +142,7 @@ static NSString * initial = @"Disconnected";
  
  
         cell= [tableView dequeueReusableCellWithIdentifier:@"Directory" forIndexPath:indexPath];
-             cell.textLabel.text = @"Documents";
+             cell.textLabel.text = @"Base Directory";
 
     }
     else {
@@ -211,10 +210,9 @@ static NSString * initial = @"Disconnected";
     
     
     if(self.network.outputStream.hasSpaceAvailable){
-//        NSLog(@"DidSelectRow  outputStream status %lu",self.network.outputStream.streamStatus);
+
         if(indexPath.section==START_SECTION){
            
-           // [self send:'A'];
             [self send:documents];
         }
     
@@ -243,7 +241,7 @@ static NSString * initial = @"Disconnected";
             }
         
         }
-     //    tableView.allowsSelection=NO;
+    
     }
 
 }
@@ -256,7 +254,7 @@ static NSString * initial = @"Disconnected";
         self.title=self.serviceName;
      }
     else
-        self.title=@"Mac computer";
+        self.title=connected;
     
         self.tableView.tableHeaderView =[[UIView alloc] initWithFrame:CGRectZero];
         [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:0] withRowAnimation:YES];
@@ -278,7 +276,11 @@ static NSString * initial = @"Disconnected";
 
     self.currentDirectory=@"";
     self.streamOpenCount=0;
-   
+    
+    //added 5/31
+    self.tableView.allowsSelection=YES;
+    
+    //
     [self.tableView reloadData];
     
 }
@@ -308,6 +310,7 @@ static NSString * initial = @"Disconnected";
                     NSLog(@"Streams open completed");
                 [self didFindService];
                
+               
             }
         } break;
     
@@ -328,21 +331,11 @@ static NSString * initial = @"Disconnected";
         case NSStreamEventHasBytesAvailable: {
      //        uint8_t     b[4096];
             uint8_t     d[8192];
-//            uint8_t     a[1024];
+
             NSInteger   bytesRead;
-//            float progress;
+
             assert(stream == self.network.inputStream);
- /*
-            if((self.serviceName==nil) || ([self.serviceName isEqual:@""])){
-                bytesRead = [self.network.inputStream read:a maxLength:sizeof(a)];
-                if(bytesRead>0)
-                    [self processServiceName:a size:bytesRead];
-                else
-                    break;
-                NSLog(@" Service name received ");
-                break;
-            }
-*/
+
             if(self.isDir){
                 bytesRead = [self.network.inputStream read:d maxLength:sizeof(d)];
                  if(bytesRead>0)
@@ -380,54 +373,23 @@ static NSString * initial = @"Disconnected";
                 
             }
                 
-           
-/*            [self.network writeToLogFile:[NSString stringWithFormat:@"Bytes read %ld", (long)bytesRead]];
-
-            if(bytesRead>0){
-               
-                                                
-                if(self.isDir)
-                    
-                    [self processData:d size:bytesRead];
-                
-                else{
-                     static NSInteger allWrittenBytes=0;
-                     NSInteger bytesWritten=0;
-                    
-                    bytesWritten = [self.fileOutputStream write:b maxLength:(size_t)bytesRead];
-                   
-                   
-                    allWrittenBytes+=bytesWritten;
-                    progress=(((float)allWrittenBytes*100)/((MyFile *)self.objects[self.index]).size)/100;
-                    [self performSelectorOnMainThread:@selector(updateProgress)
-                                           withObject:nil
-                                        waitUntilDone:YES];
-                    NSLog(@"Written %zd bytes.", (ssize_t) bytesWritten);
-                    NSLog(@"All Written %zd bytes.", (ssize_t) allWrittenBytes);
-                    if(allWrittenBytes>=((MyFile *)self.objects[self.index]).size){
-                        [self closeFileOutputStream];
-                        NSLog(@"End of file");
-                        allWrittenBytes=0;
-                        [self updateLocalFilesView];
-                    }
-                }
-            }*/
-            
+                       
         }   break;
             
         case NSStreamEventErrorOccurred:
             
             NSLog(@"Error occured");
-       
             
-        case NSStreamEventEndEncountered:{
-            
-            // [self closeFileOutputStream];
             self.downloadProgress.hidden=YES;
             self.downloadProgress.progress=0;
             [self didRemoveService];
- //           [self.network startOver];
+            break;
+        case NSStreamEventEndEncountered:{
+            
+            // [self closeFileOutputStream];
+             //           [self.network startOver];
             NSLog(@"End encountered");
+            
         }
             
         default:
@@ -472,16 +434,11 @@ static NSString * initial = @"Disconnected";
             NSInteger   bytesWritten;
         
             bytesWritten = [self.network.outputStream write:&message maxLength:sizeof(message)];
+            self.tableView.allowsSelection=NO;
             NSLog(@"Sent %u", message);
+            
         }
     
-}
-
-- (void) processServiceName:( const  char* )data size:(NSInteger)bytesRead{
-    
-    self.serviceName=[NSString stringWithCharacters:data length:bytesRead];
-    NSLog(@"Service name %@",self.serviceName);
-    [self didFindService];
 }
 
 - (void) processData:( const  char* )data size:(NSInteger)bytesRead
@@ -493,16 +450,18 @@ static NSString * initial = @"Disconnected";
     static NSUInteger length;
     
     NSIndexPath *indexPath;
+    
     if(self.index>-1){
         self.currentDirectory=[[self.currentDirectory stringByAppendingString:((MyFile *)self.objects[self.index]).name] stringByAppendingString:@"/"];
         indexPath=[NSIndexPath indexPathForRow:self.index inSection:1];
     }
     else{
-        self.currentDirectory=@"Documents/";
+        self.currentDirectory=@"Base directory/";
         indexPath=[NSIndexPath indexPathForRow:0 inSection:0];
     }
     
     [self.tableView deselectRowAtIndexPath:indexPath animated:YES];
+    
 //  dirString=[dirString initWithUTF8String:data];
     
  //   NSString *dirString=[NSString stringWithCharacters:data length:bytesRead];
@@ -521,18 +480,24 @@ static NSString * initial = @"Disconnected";
     else{
         dirString=[NSString stringWithCharacters:data length:bytesRead];
         ar= [[NSMutableArray alloc] initWithArray:[dirString componentsSeparatedByString:@":"]];
-        length=[(NSString *)ar[0] integerValue]-(((NSString *)ar[0]).length+1);
-        NSLog(@"String length %@", (NSString *)ar[0]);
-        if(length>bytesRead/2){
-            memcpy(d, data+(((NSString *)ar[0]).length+1)*2, bytesRead-(((NSString *)ar[0]).length+1)*2);
-            saved=bytesRead;
-            [self.network writeToLogFile:[NSString stringWithFormat:@"Bytes read %lu",(long)bytesRead]];
-            return;
-        }
-        
-        [ar removeObjectAtIndex:0];
-        NSLog(@"dirString  %@", [dirString substringFromIndex:((NSString *)ar[0]).length]);
+        if([ar[0] intValue]!=0){
             
+           
+ //       length=[(NSString *)ar[0] integerValue]-(((NSString *)ar[0]).length+1); changed on "empty directory" issue
+        
+            length=[(NSString *)ar[0] integerValue]+(((NSString *)ar[0]).length+1);
+        
+            NSLog(@"String length %@", (NSString *)ar[0]);
+            if(length>bytesRead/2){
+                memcpy(d, data+(((NSString *)ar[0]).length+1)*2, bytesRead-(((NSString *)ar[0]).length+1)*2);
+                saved=bytesRead;
+            
+                return;
+            }
+        
+            
+        }
+        [ar removeObjectAtIndex:0];    
     }
     
 //    dirString=[dirString initWithBytes:data length:bytesRead encoding:NSUTF8StringEncoding ];
@@ -545,7 +510,7 @@ static NSString * initial = @"Disconnected";
         self.objects=[NSMutableArray array];
     
     NSUInteger i=0;
-    do {
+    while (i<ar.count-1) {
         MyFile *mf=[[MyFile alloc] initWithName:ar[i++]];
         if(mf!=nil){
             mf.isDirectory=[(NSString *)ar[i++] boolValue];
@@ -555,7 +520,7 @@ static NSString * initial = @"Disconnected";
             }
             [self.objects addObject:mf];
         }
-    } while (i<ar.count-1);
+    }
     
   
     [self.tableView reloadData];
@@ -578,15 +543,8 @@ static NSString * initial = @"Disconnected";
      self.progress=0;
    
      self.downloadProgress.hidden=NO;
-//    [self.downloadProgress setProgress:progress animated:NO];
-/*    NSTimeInterval seconds = 1;
-    timer = [NSTimer scheduledTimerWithTimeInterval:seconds
-                                              target:self
-                                            selector:@selector(updateProgress) userInfo:nil repeats:YES];*/
     
 }
-
-
 
 -(void) updateLocalFilesView{
    

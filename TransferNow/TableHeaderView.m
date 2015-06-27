@@ -8,7 +8,7 @@
 
 #import "TableHeaderView.h"
 
-static NSString * serviceLabel =@"Start DocumentServer on your computer and turn WIFI \"on\"";
+static NSString * serviceLabel =@"Start TransferNowM on your computer and turn WIFI on";
 static NSString * startButton = @"Start  browsing";
 static NSString * stopButton = @"Stop browsing";
 static NSString * initial = @"Disconnected";
@@ -33,7 +33,7 @@ static NSString * initial = @"Disconnected";
         _monitorLabel = [[UILabel alloc] initWithFrame:anotherFrame];
         _monitorLabel.text=serviceLabel;
         _monitorLabel.numberOfLines=2;
-  //      _monitorLabel.adjustsFontSizeToFitWidth=YES;
+        _monitorLabel.adjustsFontSizeToFitWidth=YES;
         _monitorLabel.font=[UIFont systemFontOfSize: 20];
         _monitorLabel.baselineAdjustment=UIBaselineAdjustmentNone;
         

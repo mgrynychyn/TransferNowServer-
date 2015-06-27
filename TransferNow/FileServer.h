@@ -64,7 +64,7 @@
 // in progress).
 
 // Called to log server activity.
-- (void) writeToLogFile:(NSString *)message;
+//- (void) writeToLogFile:(NSString *)message;
 
 //Called when the "server" shut down
 - (void) closeStreams;
@@ -79,7 +79,10 @@
 
 @protocol FileServerDelegate <NSObject, NSStreamDelegate>
 
+- (void) didRemoveService;
 @optional
+
+
 
 - (void)serverDidStart:(FileServer *)server;
 // Called after the server has fully started, that is, once the Bonjour name

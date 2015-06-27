@@ -13,7 +13,7 @@
 
 + (NSIndexPath *) selectedIndexPath;
 + (void) setSelectedIndexPath :(NSIndexPath *)indexPath;
-+ (void) downloading;
+
 + (NSIndexPath *) downloadIndexPath;
 + (void) setDownloadIndexPath :(NSIndexPath *)indexPath;
 

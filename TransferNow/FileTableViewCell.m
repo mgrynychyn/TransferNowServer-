@@ -157,11 +157,4 @@ static UIButton * downloadButton;
     
 }
 
-+ (void) downloading{
- //   CABasicAnimation* theAnim = [CABasicAnimation animationWithKeyPath:@"color"];
-    [UIView animateWithDuration:5.0 animations:^{
-        downloadButton.alpha = 0.0;
-       
-    }];
-}
 @end
