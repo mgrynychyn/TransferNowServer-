@@ -17,7 +17,7 @@
 // properties you can configure at any time
 
 @property (nonatomic, weak,   readwrite) id<FileServerDelegate>    delegate;
-
+@property NSString *clientName;
 // properties that change as the result of other actions
 
 #pragma mark * Start and Stop
@@ -48,15 +48,7 @@
 // listening at the TCP level (to avoid the port number creeping up) but wants it
 // to disappear from Bonjour.
 
-- (void)registerService;
-// Reregistering /can/ fail and will shut down the server if it does so.
-// On failure, you'll get the -server:didStopWithError: delegate callback.
-// On success, you'll get the -serverDidStart: delegate callback, which is a
-// little weird but makes some sense (for example, you can use that to snarf
-// the latest .registeredName).
-//
-// It is an error to attempt to reregister a server that was not configured
-// to use Bonjour or a server that's stopped.
+
 
 @property (nonatomic, assign,   readonly ) BOOL                 isDeregistered;
 // Returns YES if the server has been deregistered (that is, if the server

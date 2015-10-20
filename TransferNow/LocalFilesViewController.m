@@ -82,8 +82,8 @@
     if (editingStyle == UITableViewCellEditingStyleDelete) {
         NSError *err=nil;
         [[NSFileManager defaultManager] removeItemAtURL:(NSURL *)self.files[indexPath.row] error:&err];
-        if(err)
-            NSLog(@"Error deleting file %@",err);
+       
+           
         [self.files removeObjectAtIndex:indexPath.row];
         [tableView deleteRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
     }

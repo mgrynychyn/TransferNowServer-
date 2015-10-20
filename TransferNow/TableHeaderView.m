@@ -8,7 +8,7 @@
 
 #import "TableHeaderView.h"
 
-static NSString * serviceLabel =@"Start TransferNowM on your computer and turn WIFI on";
+static NSString * serviceLabel =@"Start TransferNowM on your computer and turn WIFI or Bluetooth® on";
 static NSString * startButton = @"Start  browsing";
 static NSString * stopButton = @"Stop browsing";
 static NSString * initial = @"Disconnected";
@@ -28,13 +28,14 @@ static NSString * initial = @"Disconnected";
     
     if(self!=nil){
         
-        CGRect anotherFrame=CGRectMake(self.bounds.size.width/8, 0.0, self.bounds.size.width*0.75,  self.bounds.size.height*0.25);
-        
+        CGRect anotherFrame=CGRectMake(self.bounds.size.width*0.17, 0.0, self.bounds.size.width*0.75,  self.bounds.size.height*0.3);
+  //       CGRect anotherFrame=CGRectMake(self.bounds.size.width/8, 0.0, self.bounds.size.width*0.75,  self.bounds.size.height*0.25);
         _monitorLabel = [[UILabel alloc] initWithFrame:anotherFrame];
         _monitorLabel.text=serviceLabel;
-        _monitorLabel.numberOfLines=2;
+        _monitorLabel.numberOfLines=3;
         _monitorLabel.adjustsFontSizeToFitWidth=YES;
-        _monitorLabel.font=[UIFont systemFontOfSize: 20];
+      _monitorLabel.font=[UIFont systemFontOfSize: 23];
+   //     _monitorLabel.font=[UIFont systemFontOfSize: 20];
         _monitorLabel.baselineAdjustment=UIBaselineAdjustmentNone;
         
         anotherFrame = CGRectMake(self.bounds.size.width/8, self.bounds.size.height*0.35, self.bounds.size.width*0.75,  self.bounds.size.height*0.1125);
